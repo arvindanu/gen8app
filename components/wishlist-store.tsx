@@ -1,0 +1,4 @@
+'use client';import {createContext,useContext,useEffect,useMemo,useState} from 'react';import type {Game} from '@/types';
+type Ctx={items:Game[];has:(id:number)=>boolean;toggle:(g:Game)=>void};const Context=createContext<Ctx>({items:[],has:()=>false,toggle:()=>{}});
+export function WishlistProvider({children}:{children:React.ReactNode}){const [items,setItems]=useState<Game[]>([]),[ready,setReady]=useState(false);useEffect(()=>{try{setItems(JSON.parse(localStorage.getItem('gen8-wishlist')||'[]'))}catch{}setReady(true)},[]);useEffect(()=>{if(ready)localStorage.setItem('gen8-wishlist',JSON.stringify(items))},[items,ready]);const value=useMemo(()=>({items,has:(id:number)=>items.some(g=>g.id===id),toggle:(g:Game)=>setItems(old=>old.some(x=>x.id===g.id)?old.filter(x=>x.id!==g.id):[g,...old])}),[items]);return <Context.Provider value={value}>{children}</Context.Provider>}
+export const useWishlist=()=>useContext(Context);

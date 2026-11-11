@@ -1,0 +1,3 @@
+import {NextRequest,NextResponse} from 'next/server';import {igdb,GAME_FIELDS} from '@/lib/igdb';import type {Game} from '@/types';
+export const runtime='nodejs';
+export async function GET(_req:NextRequest,{params}:{params:Promise<{id:string}>}){try{const {id}=await params;if(!/^\d+$/.test(id))return NextResponse.json({error:'Invalid game ID'},{status:400});const rows=await igdb<Game[]>('games',`fields ${GAME_FIELDS}; where id = ${Number(id)}; limit 1;`);if(!rows[0])return NextResponse.json({error:'Game not found'},{status:404});return NextResponse.json(rows[0])}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Unable to load game'},{status:503})}}
