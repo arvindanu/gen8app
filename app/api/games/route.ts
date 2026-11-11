@@ -13,16 +13,20 @@ export async function GET(req:NextRequest){
   if(year&&/^\d{4}$/.test(year))where.push(`first_release_date >= ${Date.UTC(Number(year),0,1)/1000} & first_release_date < ${Date.UTC(Number(year)+1,0,1)/1000}`);
   if(minRating&&/^\d+(\.\d+)?$/.test(minRating))where.push(`rating >= ${Number(minRating)*10}`);
   const now=Math.floor(Date.now()/1000);
-  if(mode==='upcoming')where.push(`first_release_date > ${now}`);
+  if(mode==='upcoming'||mode==='countdown')where.push(`first_release_date > ${now}`);
   else if(mode==='recent')where.push(`first_release_date > ${now-60*60*24*365*2} & first_release_date < ${now}`);
   else if(mode==='rated')where.push('rating != null & rating_count > 20');
   let sort='hypes desc';const sorting=p.get('sort');
   if(sorting==='rating')sort='rating desc';if(sorting==='newest')sort='first_release_date desc';if(sorting==='oldest')sort='first_release_date asc';if(sorting==='name')sort='name asc';if(mode==='upcoming')sort='first_release_date asc';
   const safeSearch=q?.replace(/["\\]/g,'');
   const searchClause=safeSearch?`search "${safeSearch}"; `:'';
-  const query=`${searchClause}fields ${GAME_FIELDS}; where ${where.join(' & ')}; sort ${sort}; limit ${limit}; offset ${offset};`;
+  // IGDB applies relevance ordering to search queries and rejects an explicit sort
+  // whenever `search` is present (HTTP 406). Keep user-selected sorting for browse
+  // requests only; searched results retain IGDB's relevance order.
+  const sortClause=safeSearch?'':`sort ${sort}; `;
+  const query=`${searchClause}fields ${GAME_FIELDS}; where ${where.join(' & ')}; ${sortClause}limit ${limit}; offset ${offset};`;
   let games:Game[];
-  if(mode==='trending'&&!q&&!genre&&!platform&&!year&&!minRating&&sorting!=='rating'&&sorting!=='newest'&&sorting!=='oldest'&&sorting!=='name'){
+  if((mode==='trending'||mode==='countdown')&&!q&&!genre&&!platform&&!year&&!minRating&&sorting!=='rating'&&sorting!=='newest'&&sorting!=='oldest'&&sorting!=='name'){
    try{
     const primitives=await igdb<{game_id:number;value:number}[]>('popularity_primitives',`fields game_id,value; where popularity_type = 1; sort value desc; limit ${Math.min(500,limit+offset)};`);
     const ids=primitives.slice(offset,offset+limit).map(x=>x.game_id);
